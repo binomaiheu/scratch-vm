@@ -76,6 +76,33 @@ class Scratch3NibBlocks {
                     }
                 },
                 {
+                    opcode: 'connectToSecureBroker',
+                    text: formatMessage({
+                        id: 'nib.connectToSecureBroker',
+                        default: 'connect to secure [URL] port [PORT]',
+                        description: 'connect to secure broker over ssl'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        URL: {
+                            type: ArgumentType.STRING,
+                            defaultValue: formatMessage({
+                                id: 'nib.defaultServer',
+                                default: '127.0.0.1',
+                                description: 'default URL to connect to'
+                            })
+                        },
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            defaultValue: formatMessage({
+                                id: 'nib.defaultPort',
+                                default: '8083',
+                                description: 'default port to connect to'
+                            })
+                        }
+                    }
+                },
+                {
                     opcode: 'disconnectFromBroker',
                     text: formatMessage({
                         id: 'nib.disconnectFromBroker',
@@ -219,6 +246,32 @@ class Scratch3NibBlocks {
         // setup the connection
         console.log( "Connecting to MQTT broker " + args.URL + ":" + args.PORT );
         this._client = mqtt.connect( "ws://" + args.URL + ":" + args.PORT );
+ 
+        this._client.on('connect',function(){
+            console.log( "connected !" );
+        });
+        
+        this._client.on('message', function(topic,message){
+            console.log("received message on " + topic);
+            console.log(message.toString());
+
+            recv[topic] = true;
+            recv_msg[topic] = message.toString();
+        });
+
+    }
+
+    connectToSecureBroker( args ) {
+        
+        if ( this._client ) {
+          if ( this._client.connected == true ) {
+                this._client.end();
+            } 
+        }
+
+        // setup the connection
+        console.log( "Connecting to Secure MQTT broker " + args.URL + ":" + args.PORT );
+        this._client = mqtt.connect( "wss://" + args.URL + ":" + args.PORT );
  
         this._client.on('connect',function(){
             console.log( "connected !" );
