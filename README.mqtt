@@ -1,0 +1,89 @@
+Scratch extensions for IoT using MQTT
+Bino Maiheu
+
+First of all, when I started looking at this, i ha
+Let's create a new folder to do all the work in : 
+
+ mkdir scratch
+ cd scratch
+
+ Now, we'll need to checkout the scratch-vm and scratch-gui repositories. The
+ first one contains the code for the extension functionality, the latter one
+ are the UI components. 
+
+  git clone https://github.com/LLK/scratch-vm.git
+  git clone https://github.com/LLK/scratch-gui.git
+
+
+Next, you need to make sure you have the node package manager (npm) installed.
+
+  npm install webpack-dev-server
+  npm install webpack-cli
+
+
+# Running the ui
+
+You'll need to link the scratch-vm project into the scratch-gui project. Do this via npm link, but
+you'll need to have configured a global npm repository prefix somewhere you can write to, otherwise
+it'll default to /usr/local or something, which you don't want. 
+
+Note that you won't have to "npm install" the scratch-vm, just the scratch-gui with the scratch-vm linked into it. If you "npm install" the scratch-vm, you'll run into trouble when installing the 
+gui. 
+
+Hence: 
+
+  cd $HOME
+  mkdir node_modules
+  npm config set prefix $HOME/node_modules
+  cd -
+
+  cd scratch-vm 
+  npm link
+  cd ..
+ 
+  cd scratch-gui
+  npm link scratch-vm
+  npm install
+  npm start
+
+# Adding extensions to scratch-vm and scratch-gui
+To add an extension to scratch you'll need to change the code in at least 3 locations : 
+
+The actual workhorse code for the scratch extensions is located in the 
+ 
+  scratch-vm/src/extensions
+
+subfolder, which contains a directory per extension with an index.js file inside. In addition, you will 
+need to register the extension in the extension manager : 
+
+  scratch-vm/src/extension-support/extension-manager.js
+
+In the GUI, you can make the extension loadable from the menu via editing the 
+
+  scratch-gui/src/lib/libraries/extensions/index.jsx
+
+file. Here you'll need to add the extension to the list along with some images (png's) for the GUI to 
+display for this particular extension.  
+
+The extension format etc is well describde here via a template, though this changed already again : https://github.com/LLK/scratch-vm/wiki/Scratch-3.0-Extensions-Specification
+
+
+# Adding MQTT
+You'll need the javascript mqtt library
+
+ npm install mqtt
+
+You'll need a broker (mosquitto) with support for websockets. Normally MQTT runs over normal TCP sockets,
+but when publishing or subscribing via a webbrowser, the protocol is converted to make use of websockets. 
+The MQTT broker specifically needs to be configured with an additional listeren for websockets in order
+to be usable for the Scratch webinterface. For mosquitto, this is an example configuration file which enables
+support for websockets : 
+
+In the file : /etc/mosquitto/mosquitto.conf, add this to the end : 
+
+  listener 1883
+
+  listener 8083
+  protocol websockets
+
+this will add a listener on port 1883 for ordinary tcp connections 
