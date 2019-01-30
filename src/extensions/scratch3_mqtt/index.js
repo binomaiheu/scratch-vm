@@ -43,7 +43,7 @@ class Scratch3MQTTBlocks {
     getInfo () {
         return {
             id: 'mqtt',
-            name: 'MQTT Extension', 
+            name: 'MQTT', 
             blockIconURI: blockIconURI,
             menuIconURI: menuIconURI,
             blocks: [
