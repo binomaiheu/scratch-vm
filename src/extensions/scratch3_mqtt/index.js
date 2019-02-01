@@ -6,6 +6,11 @@ const formatMessage = require('format-message');
 
 var mqtt = require('mqtt');
 
+const protocolMenu = {
+    ws: 'ws://',
+    wss: 'wss://'
+};
+
 /**
  * Icon svg to be displayed in the blocks category menu, encoded as a data URI.
  * @type {string}
@@ -28,12 +33,20 @@ var recv_msg = {};
  */
 class Scratch3MQTTBlocks {
     constructor (runtime) {
+        /**
+         * Register the runtime object in the class
+         */
         this.runtime = runtime;
-    
-
-        this.runtime.on('PROJECT_STOP_ALL', this.disconnectFromBroker);
-	    
+        
+        /**
+         * Initialise the client to null
+         */
         this._client = null;
+
+        /**
+         * Disconnect upon stop
+         */
+        this.runtime.on('PROJECT_STOP_ALL', this.disconnectFromBroker);	    
     }
 
     /**
@@ -51,38 +64,16 @@ class Scratch3MQTTBlocks {
                     opcode: 'connectToBroker',
                     text: formatMessage({
                         id: 'mqtt.connectToBroker',
-                        default: 'connect to [URL] port [PORT]',
+                        default: 'connect [PROTOCOL] [URL] : [PORT]',
                         description: 'connect to broker'
                     }),
                     blockType: BlockType.COMMAND,
                     arguments: {
-                        URL: {
+                        PROTOCOL: {
                             type: ArgumentType.STRING,
-                            defaultValue: formatMessage({
-                                id: 'mqtt.defaultServer',
-                                default: '127.0.0.1',
-                                description: 'default URL to connect to'
-                            })
+                            menu: 'PROTOCOL',
+                            defaultValue: protocolMenu.ws
                         },
-                        PORT: {
-                            type: ArgumentType.STRING,
-                            defaultValue: formatMessage({
-                                id: 'mqtt.defaultPort',
-                                default: '8083',
-                                description: 'default port to connect to'
-                            })
-                        }
-                    }
-                },
-                {
-                    opcode: 'connectToSecureBroker',
-                    text: formatMessage({
-                        id: 'mqtt.connectToSecureBroker',
-                        default: 'connect to secure [URL] port [PORT]',
-                        description: 'connect to secure broker over ssl'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
                         URL: {
                             type: ArgumentType.STRING,
                             defaultValue: formatMessage({
@@ -135,6 +126,29 @@ class Scratch3MQTTBlocks {
                                 description: 'default message to publish'
                             })
                         }
+                    }
+                },
+                {
+                    opcode: 'send_pattern',
+                    text: formatMessage({
+                        id: 'mqtt.send_pattern',
+                        default: 'publish on [CHANNEL] : [PATTERN]',
+                        description: 'publishes the pattern to the channel'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        CHANNEL: {
+                            type: ArgumentType.STRING,
+                            defaultValue: formatMessage({
+                                id: 'mqtt.defaultChannel',
+                                default: 'scratch3-mqtt',
+                                description: 'default channel to publish'
+                            })
+                        },
+                        PATTERN: {
+                            type: ArgumentType.MATRIX8,
+                            defaultValue: '0011110001000010101001011000000110100101100110010100001000111100'
+                        }   
                     }
                 },
                 {
@@ -222,9 +236,18 @@ class Scratch3MQTTBlocks {
                         }
                     }
                 }
-
             ],
             menus: {
+                    PROTOCOL:[
+                        {
+                            text: 'ws://',
+                            value: protocolMenu.ws
+                        },
+                        {
+                            text: 'wss://',
+                            value: protocolMenu.wss
+                        }
+                    ]
             }
         }
     }
@@ -243,41 +266,21 @@ class Scratch3MQTTBlocks {
         }
 
         // setup the connection
-        console.log( "Connecting to MQTT broker " + args.URL + ":" + args.PORT );
-        this._client = mqtt.connect( "ws://" + args.URL + ":" + args.PORT );
- 
+        console.log( "[mqtt] connecting to " + args.PROTOCOL + args.URL + ":" + args.PORT );
+
+        this._client = mqtt.connect( args.PROTOCOL + args.URL + ":" + args.PORT );
+
         this._client.on('connect',function(){
-            console.log( "connected !" );
+            console.log( "[mqtt] Connected !" );
         });
         
+        this._client.on('error',function(){
+            console.log( "[mqtt] unable to connect !");
+            this._client.end();
+        });
+
         this._client.on('message', function(topic,message){
-            console.log("received message on " + topic);
-            console.log(message.toString());
-
-            recv[topic] = true;
-            recv_msg[topic] = message.toString();
-        });
-
-    }
-
-    connectToSecureBroker( args ) {
-        
-        if ( this._client ) {
-          if ( this._client.connected == true ) {
-                this._client.end();
-            } 
-        }
-
-        // setup the connection
-        console.log( "Connecting to Secure MQTT broker " + args.URL + ":" + args.PORT );
-        this._client = mqtt.connect( "wss://" + args.URL + ":" + args.PORT );
- 
-        this._client.on('connect',function(){
-            console.log( "connected !" );
-        });
-        
-        this._client.on('message', function(topic,message){
-            console.log("received message on " + topic);
+            console.log("[mqtt] received message on " + topic);
             console.log(message.toString());
 
             recv[topic] = true;
@@ -299,38 +302,58 @@ class Scratch3MQTTBlocks {
     }
 
     disconnectFromBroker(args) {
-        console.log("Disconnecting from MQTT broker... ");
+        console.log("[mqtt] disconnecting from MQTT broker... ");
         if ( this._client != null ) {  this._client.end(); }
     }
 
     subscribe( args ) {
+
         if ( this._client != null ) {
             if ( this._client.connected == true ) {
                 this._client.subscribe( args.CHANNEL );
-                console.log( "subscribed to " + args.CHANNEL );
+                console.log( "[mqtt] subscribed to " + args.CHANNEL );
             }  else {
-                console.warn("cannot subscribe, not connected...");
+                console.warn("[mqtt] cannot subscribe, not connected...");
             } 
         }
     }
 
     unsubscribe( args ) {
+
         if ( this._client != null ) {
             if ( this._client.connected == true ) {
                 this._client.unsubscribe( args.CHANNEL );
-                console.log( "unsubscribed to " + args.CHANNEL );
+                console.log( "[mqtt] unsubscribed to " + args.CHANNEL );
             }  else {
-                console.warn("cannot unsubscribe, not connected...");
+                console.warn("[mqtt] cannot unsubscribe, not connected...");
             } 
         }
     }
 
     publish( args ) {
+        if ( ! this._client ) return;
+
         if ( this._client.connected == true ) {
-            console.log( "publish channel: " + args.CHANNEL + ", message: " + args.MESSAGE );
+            console.log( "[mqtt] publish channel: " + args.CHANNEL + ", message: " + args.MESSAGE );
             this._client.publish( args.CHANNEL, args.MESSAGE );
         } else {
-            console.warn( "publish: unable to proceed, not connected" );
+            console.warn( "[mqtt] publish: unable to proceed, not connected" );
+        }
+    }
+
+    send_pattern( args ) {
+        if ( ! this._client ) return;
+
+        if ( this._client.connected == true ) {
+            
+
+
+
+
+            console.log( "[mqtt] send_pattern to channel: " + args.CHANNEL + ", message: " + args.PATTERN );
+            this._client.publish( args.CHANNEL, args.PATTERN );
+        } else {
+            console.warn( "[mqtt] send_pattern: unable to proceed, not connected" );
         }
     }
 
