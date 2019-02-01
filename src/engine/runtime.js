@@ -67,6 +67,10 @@ const ArgumentTypeMap = (() => {
         shadowType: 'matrix',
         fieldType: 'MATRIX'
     };
+    map[ArgumentType.MATRIX8] = {
+        shadowType: 'matrix8',
+        fieldType: 'MATRIX8'
+    };
     map[ArgumentType.NOTE] = {
         shadowType: 'note',
         fieldType: 'NOTE'
