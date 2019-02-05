@@ -37,7 +37,7 @@ class Scratch3MQTTBlocks {
          * Register the runtime object in the class
          */
         this.runtime = runtime;
-        
+
         /**
          * Initialise the client to null
          */
@@ -46,7 +46,7 @@ class Scratch3MQTTBlocks {
         /**
          * Disconnect upon stop
          */
-        this.runtime.on('PROJECT_STOP_ALL', this.disconnectFromBroker);	    
+        this.runtime.on('PROJECT_STOP_ALL', this.disconnectFromBroker);
     }
 
     /**
@@ -56,7 +56,7 @@ class Scratch3MQTTBlocks {
     getInfo () {
         return {
             id: 'mqtt',
-            name: 'MQTT', 
+            name: 'MQTT',
             blockIconURI: blockIconURI,
             menuIconURI: menuIconURI,
             blocks: [
@@ -148,7 +148,7 @@ class Scratch3MQTTBlocks {
                         PATTERN: {
                             type: ArgumentType.MATRIX8,
                             defaultValue: '0011110001000010101001011000000110100101100110010100001000111100'
-                        }   
+                        }
                     }
                 },
                 {
@@ -188,7 +188,7 @@ class Scratch3MQTTBlocks {
                             })
                         }
                     }
-                },		 		        
+                },
                 {
 		            opcode: 'isConnected',
                     text: formatMessage({
@@ -253,16 +253,15 @@ class Scratch3MQTTBlocks {
     }
 
     isConnected(){
-        if ( ! this._client ) return false;
-        return this._client.connected;
+      return this._client
+        ? this._client.connected
+        : false;
     }
 
     connectToBroker( args ) {
-        
-        if ( this._client ) {
-          if ( this._client.connected == true ) {
-                this._client.end();
-            } 
+
+        if ( this.isConnected() ) {
+            this.disconnectFromBroker();
         }
 
         // setup the connection
@@ -273,8 +272,8 @@ class Scratch3MQTTBlocks {
         this._client.on('connect',function(){
             console.log( "[mqtt] Connected !" );
         });
-        
-        this._client.on('error',function(){
+
+        this._client.on('error', () => {
             console.log( "[mqtt] unable to connect !");
             this._client.end();
         });
@@ -303,60 +302,48 @@ class Scratch3MQTTBlocks {
 
     disconnectFromBroker(args) {
         console.log("[mqtt] disconnecting from MQTT broker... ");
-        if ( this._client != null ) {  this._client.end(); }
+        if ( this._client ) {  this._client.end(); }
     }
 
     subscribe( args ) {
+        if ( !this.isConnected() ) {
+            console.warn("[mqtt] cannot subscribe, not connected...");
+            return;
+        };
 
-        if ( this._client != null ) {
-            if ( this._client.connected == true ) {
-                this._client.subscribe( args.CHANNEL );
-                console.log( "[mqtt] subscribed to " + args.CHANNEL );
-            }  else {
-                console.warn("[mqtt] cannot subscribe, not connected...");
-            } 
-        }
+        this._client.subscribe( args.CHANNEL );
+        console.log( "[mqtt] subscribed to " + args.CHANNEL );
     }
 
     unsubscribe( args ) {
+        if ( !this.isConnected() ) {
+            console.warn("[mqtt] cannot unsubscribe, not connected...");
+            return;
+        };
 
-        if ( this._client != null ) {
-            if ( this._client.connected == true ) {
-                this._client.unsubscribe( args.CHANNEL );
-                console.log( "[mqtt] unsubscribed to " + args.CHANNEL );
-            }  else {
-                console.warn("[mqtt] cannot unsubscribe, not connected...");
-            } 
-        }
+        this._client.unsubscribe( args.CHANNEL );
+        console.log( "[mqtt] unsubscribed to " + args.CHANNEL );
     }
 
     publish( args ) {
-        if ( ! this._client ) return;
+          if ( !this.isConnected() ) {
+              console.warn( "[mqtt] publish: unable to proceed, not connected" );
+              return;
+          }
 
-        if ( this._client.connected == true ) {
-            console.log( "[mqtt] publish channel: " + args.CHANNEL + ", message: " + args.MESSAGE );
-            this._client.publish( args.CHANNEL, args.MESSAGE );
-        } else {
-            console.warn( "[mqtt] publish: unable to proceed, not connected" );
-        }
+          console.log( "[mqtt] publish channel: " + args.CHANNEL + ", message: " + args.MESSAGE );
+          this._client.publish( args.CHANNEL, args.MESSAGE );
     }
 
     send_pattern( args ) {
-        if ( ! this._client ) return;
-
-        if ( this._client.connected == true ) {
-            
-
-
-
-
-            console.log( "[mqtt] send_pattern to channel: " + args.CHANNEL + ", message: " + args.PATTERN );
-            this._client.publish( args.CHANNEL, args.PATTERN );
-        } else {
+        if ( !this.isConnected() ) {
             console.warn( "[mqtt] send_pattern: unable to proceed, not connected" );
+            return;
         }
-    }
 
+        console.log( "[mqtt] send_pattern to channel: " + args.CHANNEL + ", message: " + args.PATTERN );
+        this._client.publish( args.CHANNEL, args.PATTERN );
+    }
 }
 
 module.exports = Scratch3MQTTBlocks;

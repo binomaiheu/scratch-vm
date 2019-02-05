@@ -2,6 +2,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const defaultsDeep = require('lodash.defaultsdeep');
 const path = require('path');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const { NormalModuleReplacementPlugin } = require('webpack');
 
 const base = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -36,7 +37,9 @@ const base = {
             })
         ]
     },
-    plugins: []
+    plugins: [
+      new NormalModuleReplacementPlugin(/^mqtt$/, "mqtt/dist/mqtt.js")
+    ]
 };
 
 module.exports = [
